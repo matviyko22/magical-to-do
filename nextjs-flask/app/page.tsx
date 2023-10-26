@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import LoginForm from './LoginForm'
 
 type ListType = {
   title: string;
@@ -13,6 +14,13 @@ const TodoApp = () => {
   const [newListTitle, setNewListTitle] = useState('');
   const [newItemTitle, setNewItemTitle] = useState('');
   const [warningVisible, setWarningVisible] = useState(false);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:5328/api/python')
+      .then(response => response.text())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error:', error));
+  }, []);
 
   const createList = () => {
     if (newListTitle.trim() !== '') {
@@ -55,6 +63,7 @@ const TodoApp = () => {
       <nav className="bg-blue-500 text-white p-4">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-semibold">Magical To-Do</h1>
+          <LoginForm />
           <button className="px-3 py-1 bg-red-700 rounded hover:bg-red-600" onClick={() => setLists([])}>
             Reset
           </button>
