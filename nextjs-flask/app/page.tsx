@@ -7,11 +7,17 @@ const db = getFirestore();
 
 export type ListType = {
   title: string;
-  items: { title: string; subItems: any[] }[];
+  items: {
+    title: string;
+    subItems: { title: string; completed: boolean }[];
+    completed: boolean;
+  }[];
 };
 
 const TodoApp = () => {
   const [lists, setLists] = useState<ListType[]>([]);
+  const [newSubItemTitle, setNewSubItemTitle] = useState("");
+  const [expandedTasks, setExpandedTasks] = useState<boolean[]>([]);
   const [activeList, setActiveList] = useState(null);
   const [newListTitle, setNewListTitle] = useState("");
   const [newItemTitle, setNewItemTitle] = useState("");
@@ -28,6 +34,12 @@ const TodoApp = () => {
       .catch((error) => console.error("Error:", error));
   }, []);
 
+  useEffect(() => {
+    if (lists) {
+      setExpandedTasks(lists.map(() => false));
+    }
+  }, [lists]);
+
   const createList = async () => {
     if (username.trim() === "") {
       console.error("Please, login to add tasks");
@@ -38,7 +50,9 @@ const TodoApp = () => {
         title: newListTitle,
         items: [],
       };
-      const updatedLists = Array.isArray(lists) ? [...lists, newList] : [newList];
+      const updatedLists = Array.isArray(lists)
+        ? [...lists, newList]
+        : [newList];
       setLists(updatedLists);
       setNewListTitle("");
 
@@ -66,6 +80,7 @@ const TodoApp = () => {
       const newItem = {
         title: newItemTitle,
         subItems: [],
+        completed: false,
       };
       const updatedLists = [...lists];
       updatedLists[listIndex].items.push(newItem);
@@ -81,10 +96,74 @@ const TodoApp = () => {
     }
   };
 
+  const createSubItem = async (listIndex: number, itemIndex: number) => {
+    if (username.trim() === "") {
+      console.error("Please, login to add tasks");
+      return;
+    }
+    if (newSubItemTitle.trim() !== "") {
+      const newSubItem = {
+        title: newSubItemTitle,
+        completed: false,
+        subItems: [],
+      };
+      const updatedLists = [...lists];
+      updatedLists[listIndex].items[itemIndex].subItems.push(newSubItem);
+      setLists(updatedLists);
+      setNewSubItemTitle("");
+
+      // Save lists to Firestore
+      if (username.trim() !== "") {
+        await setDoc(doc(db, "users", username), { lists: updatedLists });
+      } else {
+        console.error("Username is empty, cannot save to Firestore");
+      }
+    }
+  };
+
+  const handleTaskClick = (index: number) => {
+    setExpandedTasks(
+      expandedTasks.map((expanded, i) => (i === index ? !expanded : expanded))
+    );
+  };
+
   const deleteItem = (listIndex: number, itemIndex: number) => {
     const updatedLists = [...lists];
     updatedLists[listIndex].items.splice(itemIndex, 1);
     setLists(updatedLists);
+  };
+
+  const deleteSubItem = (
+    listIndex: number,
+    itemIndex: number,
+    subItemIndex: number
+  ) => {
+    const updatedLists = [...lists];
+    updatedLists[listIndex].items[itemIndex].subItems.splice(subItemIndex, 1);
+    setLists(updatedLists);
+  };
+
+  const markAsCompleted = async (
+    listIndex: number,
+    itemIndex: number,
+    subItemIndex?: number
+  ) => {
+    const updatedLists = [...lists];
+    if (subItemIndex !== undefined) {
+      updatedLists[listIndex].items[itemIndex].subItems[
+        subItemIndex
+      ].completed = true;
+    } else {
+      updatedLists[listIndex].items[itemIndex].completed = true;
+    }
+    setLists(updatedLists);
+
+    // Save lists to Firestore
+    if (username.trim() !== "") {
+      await setDoc(doc(db, "users", username), { lists: updatedLists });
+    } else {
+      console.error("Username is empty, cannot save to Firestore");
+    }
   };
 
   return (
@@ -146,61 +225,117 @@ const TodoApp = () => {
           )}
         </div>
         <div className="w-3/4 p-4">
-          {lists && lists.map((list, listIndex) => (
-            <div key={listIndex} className="bg-white rounded shadow p-4 mb-4">
-              <h2 className="text-lg font-semibold text-blue-700 mb-2">
-                {list.title}
-                <button
-                  className="ml-2 text-red-500"
-                  onClick={() => deleteList(listIndex)}
+          {lists &&
+            lists.map((list, listIndex) => (
+              <div
+                key={listIndex}
+                className="bg-white rounded shadow p-4 mb-4"
+                style={{ cursor: "pointer" }}
+              >
+                <h2
+                  className="text-lg font-semibold text-blue-700 mb-2"
+                  onClick={() => handleTaskClick(listIndex)}
                 >
-                  Delete
-                </button>
-              </h2>
-              <div className="mb-2">
-                {username ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (newItemTitle.trim() !== "") {
-                        createItem(listIndex);
-                        setNewItemTitle("");
-                      }
+                  {expandedTasks[listIndex] ? "v" : ">"} {list.title}
+                  <button
+                    className="ml-2 text-red-500"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteList(listIndex);
                     }}
                   >
-                    <input
-                      type="text"
-                      placeholder="Item Title"
-                      className="w-full border p-2 rounded mb-2 text-blue-600"
-                      value={newItemTitle}
-                      onChange={(e) => setNewItemTitle(e.target.value)}
-                    />
-                    <button
-                      className="bg-blue-500 text-white px-4 py-2 rounded"
-                      type="submit"
-                    >
-                      Add Item
-                    </button>
-                  </form>
-                ) : (
-                  <p className="text-red-500">Please, login to add tasks</p>
+                    Delete
+                  </button>
+                </h2>
+                {expandedTasks[listIndex] && (
+                  <div className="mb-2">
+                    {username ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (newItemTitle.trim() !== "") {
+                            createItem(listIndex);
+                            setNewItemTitle("");
+                          }
+                        }}
+                      >
+                        <input
+                          type="text"
+                          placeholder="Item Title"
+                          className="w-full border p-2 rounded mb-2 text-blue-600"
+                          value={newItemTitle}
+                          onChange={(e) => setNewItemTitle(e.target.value)}
+                        />
+                        <button
+                          className="bg-blue-500 text-white px-4 py-2 rounded"
+                          type="submit"
+                        >
+                          Add Item
+                        </button>
+                      </form>
+                    ) : (
+                      <p className="text-red-500">Please, login to add tasks</p>
+                    )}
+                  </div>
+                )}
+                {expandedTasks[listIndex] && (
+                  <ul>
+                    {list.items.map((item, itemIndex) => (
+                      <div key={itemIndex} className="mb-2 text-blue-600">
+                        <input type="checkbox" className="form-checkbox text-blue-500 border-blue-600 border-2" style={{backgroundColor: item.completed ? 'blue' : 'white'}} onClick={() => markAsCompleted(listIndex, itemIndex)} />
+                        {item.title}
+                        <button
+                          className="ml-2 text-red-500"
+                          onClick={() => deleteItem(listIndex, itemIndex)}
+                        >
+                          Delete
+                        </button>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            createSubItem(listIndex, itemIndex);
+                          }}
+                        >
+                          <input
+                            className="w-1/2 border p-1 rounded mb-2 mr-3 text-blue-600"
+                            type="text"
+                            value={newSubItemTitle}
+                            onChange={(e) => setNewSubItemTitle(e.target.value)}
+                          />
+                          <button
+                            className="bg-blue-500 text-white px-2 py-1 rounded"
+                            type="submit"
+                          >
+                            Add Sub-Item
+                          </button>
+                        </form>
+                        {item.subItems.map((subItem, subItemIndex) => (
+                          <div
+                            key={subItemIndex}
+                            className="ml-4 mb-2 text-blue-600"
+                          >
+                            <input type="checkbox" className="form-checkbox text-blue-500" style={{backgroundColor: subItem.completed ? 'blue' : 'white'}} onClick={() => markAsCompleted(listIndex, itemIndex, subItemIndex)} />
+                            {subItem.title}
+                            <button
+                              className="ml-2 text-red-500"
+                              onClick={() =>
+                                deleteSubItem(
+                                  listIndex,
+                                  itemIndex,
+                                  subItemIndex
+                                )
+                              }
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </ul>
                 )}
               </div>
-              <ul>
-                {list.items.map((item, itemIndex) => (
-                  <li key={itemIndex} className="mb-2 text-blue-600">
-                    {item.title}
-                    <button
-                      className="ml-2 text-red-500"
-                      onClick={() => deleteItem(listIndex, itemIndex)}
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     </div>
