@@ -10,9 +10,10 @@ type LoginFormProps = {
   username: string;
   setUsername: React.Dispatch<React.SetStateAction<string>>;
   setLists: React.Dispatch<React.SetStateAction<ListType[]>>;
+  lists: ListType[];
 };
 
-const LoginForm = ({ username, setUsername, setLists }: LoginFormProps) => {
+const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) => {
   const [showLogin, setShowLogin] = useState(false);
   const [showGreeting, setShowGreeting] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -35,7 +36,7 @@ const LoginForm = ({ username, setUsername, setLists }: LoginFormProps) => {
       }
   
       // Save lists to Firestore
-      await setDoc(doc(db, "users", user.uid), { tasks });
+      await setDoc(doc(db, "users", user.uid), { lists });
   
       setShowLogin(false);
       setShowGreeting(true);
