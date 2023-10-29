@@ -1,55 +1,83 @@
+// Importing necessary libraries and components
 import React, { useState, useEffect } from "react";
+// Importing Firebase authentication functions
 import { signInWithPopup, signOut } from "firebase/auth";
+// Importing Firebase authentication and Google provider configurations
 import { auth, googleProvider } from "./firebase";
+// Importing Firebase Firestore functions
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+// Importing the ListType from page.tsx
 import { ListType } from "./page";
 
+// Initializing Firestore
 const db = getFirestore();
 
+// Defining the type for LoginForm props
 type LoginFormProps = {
-  username: string;
-  setUsername: React.Dispatch<React.SetStateAction<string>>;
-  setLists: React.Dispatch<React.SetStateAction<ListType[]>>;
-  lists: ListType[];
+  username: string; // The username of the user
+  setUsername: React.Dispatch<React.SetStateAction<string>>; // Function to set the username
+  setLists: React.Dispatch<React.SetStateAction<ListType[]>>; // Function to set the lists
+  lists: ListType[]; // The lists of the user
 };
 
+// LoginForm component
 const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) => {
+  // State for showing the login form
   const [showLogin, setShowLogin] = useState(false);
+  // State for showing the greeting message
   const [showGreeting, setShowGreeting] = useState(false);
+  // State for storing the tasks
   const [tasks, setTasks] = useState([]);
 
+  // Function to handle login
   const handleLogin = async () => {
     try {
+      // Sign in with Google popup
       const result = await signInWithPopup(auth, googleProvider);
+      // Get the user from the result
       const user = result.user;
+      // Set the username
       setUsername(user.displayName || "");
   
+      // If the user exists and has a uid
       if (user && user.uid) {
+        // Get the document reference from Firestore
         const docRef = doc(db, "users", user.uid);
+        // Get the document snapshot
         const docSnap = await getDoc(docRef);
+        // If the document exists
         if (docSnap.exists()) {
+          // Log the user data
           console.log("User data:", docSnap.data());
-          const fetchedLists = docSnap.data().lists; // Store the fetched data in a variable
-          console.log("Fetched lists from Firestore:", fetchedLists); // Log the fetched data
-          setLists(fetchedLists); // Update the lists state with the fetched data
+          // Store the fetched data in a variable
+          const fetchedLists = docSnap.data().lists;
+          // Log the fetched data
+          console.log("Fetched lists from Firestore:", fetchedLists);
+          // Update the lists state with the fetched data
+          setLists(fetchedLists);
         } else {
+          // Log that no data was found for this user in Firestore
           console.log("No data found for this user in Firestore.");
+          // Reset the lists state
           setLists([]);
         }
       }
   
       // Save lists to Firestore
       await setDoc(doc(db, "users", user.uid), { lists });
-      console.log("Lists saved to Firestore:", lists); // Log the saved data
+      // Log the saved data
+      console.log("Lists saved to Firestore:", lists);
   
+      // Hide the login form and show the greeting message
       setShowLogin(false);
       setShowGreeting(true);
     } catch (error) {
-      // Handle error here
-      console.log("Error in handleLogin:", error); // Log any errors
+      // Log any errors
+      console.log("Error in handleLogin:", error);
     }
   };
 
+  // Function to handle logout
   const handleLogout = async () => {
     try {
       // Save lists to Firestore before logging out
@@ -60,17 +88,21 @@ const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) =
         console.error("Username is empty, cannot save to Firestore");
       }
   
+      // Sign out the user
       await signOut(auth);
+      // Reset the username and lists state
       setUsername("");
       setLists([]); // Reset tasks
       console.log("Lists after logout:", []); 
+      // Hide the greeting message
       setShowGreeting(false);
     } catch (error) {
-      // Handle error here
+      // Log any errors
       console.log(error);
     }
   };
 
+  // Effect to hide the greeting message after a certain time
   useEffect(() => {
     if (showGreeting) {
       const timer = setTimeout(() => {
@@ -80,6 +112,7 @@ const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) =
     }
   }, [showGreeting]);
 
+  // Render the LoginForm component
   return (
     <>
       {username ? (
@@ -128,4 +161,5 @@ const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) =
   );
 };
 
+// Export the LoginForm component
 export default LoginForm;
