@@ -29,30 +29,45 @@ const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) =
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           console.log("User data:", docSnap.data());
-          setLists(docSnap.data().lists); // Update the lists state with the fetched data
+          const fetchedLists = docSnap.data().lists; // Store the fetched data in a variable
+          console.log("Fetched lists from Firestore:", fetchedLists); // Log the fetched data
+          setLists(fetchedLists); // Update the lists state with the fetched data
         } else {
+          console.log("No data found for this user in Firestore.");
           setLists([]);
         }
       }
   
       // Save lists to Firestore
       await setDoc(doc(db, "users", user.uid), { lists });
+      console.log("Lists saved to Firestore:", lists); // Log the saved data
   
       setShowLogin(false);
       setShowGreeting(true);
     } catch (error) {
       // Handle error here
+      console.log("Error in handleLogin:", error); // Log any errors
     }
   };
 
   const handleLogout = async () => {
     try {
+      // Save lists to Firestore before logging out
+      if (username.trim() !== "") {
+        await setDoc(doc(db, "users", username), { lists });
+        console.log("Lists saved to Firestore:", lists);
+      } else {
+        console.error("Username is empty, cannot save to Firestore");
+      }
+  
       await signOut(auth);
       setUsername("");
       setLists([]); // Reset tasks
+      console.log("Lists after logout:", []); 
       setShowGreeting(false);
     } catch (error) {
       // Handle error here
+      console.log(error);
     }
   };
 
@@ -60,7 +75,7 @@ const LoginForm = ({ username, setUsername, setLists, lists }: LoginFormProps) =
     if (showGreeting) {
       const timer = setTimeout(() => {
         setShowGreeting(false);
-      }, 3000);
+      }, 1000); // Change this to your desired time in milliseconds
       return () => clearTimeout(timer);
     }
   }, [showGreeting]);
