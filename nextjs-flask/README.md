@@ -17,6 +17,11 @@ npm install
 yarn
 # or
 pnpm install
+# to start the app
+npm run build
+npm run start
+# or development server
+npm run dev
 ```
 
 The application will be accessible at http://localhost:3000.
