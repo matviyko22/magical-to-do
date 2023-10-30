@@ -5,8 +5,6 @@ import LoginForm from "./LoginForm";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { getApps, initializeApp } from 'firebase/app';
 import { v4 as uuidv4 } from "uuid";
-import { getAuth } from "firebase/auth";
-import { firebaseConfig } from './firebase';
 
 const db = getFirestore();
 
@@ -20,11 +18,6 @@ export type ListType = {
     completed: boolean;
   }[];
 };
-
-let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-}
 
 const TodoApp = () => {
   const [lists, setLists] = useState<ListType[]>([]);
